@@ -1,0 +1,385 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_MIGRATE_URL")
+}
+
+// ── Users ─────────────────────────────────────────────────────────────────────
+
+model User {
+  id               String    @id @default(cuid())
+  email            String    @unique
+  password         String?
+  name             String    @default("")
+  role             String    @default("VIEWER") // VIEWER | ADMIN
+  membershipStatus String    @default("NONE")   // NONE | ACTIVE | CANCELLED
+  lastLoginAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  registrations Registration[]
+  purchases     Purchase[]
+  watchEvents   WatchEvent[]
+  emailLogs     EmailLog[]
+  accounts      Account[]
+  sessions      Session[]
+}
+
+// NextAuth adapter tables
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ── Webinars ──────────────────────────────────────────────────────────────────
+
+model Webinar {
+  id          String @id @default(cuid())
+  slug        String @unique
+  title       String
+  subtitle    String @default("")
+  description String @default("")
+
+  // Delivery mode: ON_DEMAND | LIVE | HYBRID
+  webinarType String @default("ON_DEMAND")
+
+  // Mux on-demand asset (populated after upload or after live ends)
+  muxAssetId      String @default("")
+  muxPlaybackId   String @default("")
+  muxDurationSecs Int    @default(0)
+
+  // Mux live stream (LIVE / HYBRID only)
+  muxLiveStreamId   String @default("")
+  muxLiveStreamKey  String @default("") // RTMP key for OBS / Streamyard
+  muxLivePlaybackId String @default("")
+
+  thumbnailUrl String @default("")
+
+  // Access & pricing
+  accessType    String @default("FREE") // FREE | PAID | MEMBERSHIP
+  priceGbp      Int    @default(0)      // pence
+  stripePriceId String @default("")
+
+  // Publishing: DRAFT | LIVE | PUBLISHED | ARCHIVED
+  status      String    @default("DRAFT")
+  publishedAt DateTime?
+
+  // SEO
+  metaTitle String @default("")
+  metaDesc  String @default("")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  chapters      Chapter[]
+  ctas          WebinarCTA[]
+  registrations Registration[]
+  watchEvents   WatchEvent[]
+  emailSteps    EmailStep[]
+  liveSessions  LiveSession[]
+  widgets       Widget[]
+  watchQAs      WatchQA[]
+}
+
+// ── Live Sessions ─────────────────────────────────────────────────────────────
+
+model LiveSession {
+  id               String    @id @default(cuid())
+  webinarId        String
+  scheduledAt      DateTime
+  durationMins     Int       @default(60)
+  maxAttendees     Int       @default(100)
+  status           String    @default("SCHEDULED") // SCHEDULED | LIVE | ENDED
+  startedAt        DateTime?
+  endedAt          DateTime?
+  attendeeCount    Int       @default(0)
+  muxLiveStreamId  String    @default("")
+  recordingAssetId String    @default("")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  webinar Webinar @relation(fields: [webinarId], references: [id], onDelete: Cascade)
+
+  @@index([webinarId, scheduledAt])
+}
+
+// ── Chapters ──────────────────────────────────────────────────────────────────
+
+model Chapter {
+  id            String   @id @default(cuid())
+  webinarId     String
+  title         String
+  startTimeSecs Int
+  thumbnailUrl  String   @default("")
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+
+  webinar Webinar @relation(fields: [webinarId], references: [id], onDelete: Cascade)
+}
+
+// ── In-video CTA Overlays ─────────────────────────────────────────────────────
+
+model WebinarCTA {
+  id          String  @id @default(cuid())
+  webinarId   String
+  productId   String?
+  triggerSecs Int
+  dismissSecs Int     @default(30) // 0 = manual dismiss only
+
+  headline    String
+  subheadline String @default("")
+  ctaLabel    String @default("Buy Now")
+  ctaUrl      String @default("")
+
+  // BANNER | MODAL | SIDEBAR
+  displayStyle    String @default("BANNER")
+  backgroundColor String @default("#43165c")
+  textColor       String @default("#ffffff")
+  accentColor     String @default("#fbba00")
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  webinar Webinar  @relation(fields: [webinarId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id])
+
+  @@index([webinarId, triggerSecs])
+}
+
+// ── Products ──────────────────────────────────────────────────────────────────
+
+model Product {
+  id                String   @id @default(cuid())
+  name              String
+  description       String   @default("")
+  imageUrl          String   @default("")
+  priceGbp          Int      // pence
+  compareAtPriceGbp Int      @default(0)
+  stripePriceId     String   @default("")
+  stripeProductId   String   @default("")
+  // ONE_OFF | MEMBERSHIP | BUNDLE
+  productType String   @default("ONE_OFF")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  ctas      WebinarCTA[]
+  purchases Purchase[]
+}
+
+// ── Registrations ─────────────────────────────────────────────────────────────
+
+model Registration {
+  id        String  @id @default(cuid())
+  webinarId String
+  userId    String?
+  email     String
+  name      String  @default("")
+
+  accessGranted   Boolean   @default(false)
+  accessToken     String    @unique @default(cuid())
+  accessExpiresAt DateTime?
+
+  utmSource   String @default("")
+  utmMedium   String @default("")
+  utmCampaign String @default("")
+  referrer    String @default("")
+
+  emailSequenceStep Int       @default(0)
+  emailPausedUntil  DateTime?
+
+  // Watch scheduling (FREE webinars — user picks a time, reminder sent then)
+  scheduledWatchAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  webinar   Webinar    @relation(fields: [webinarId], references: [id])
+  user      User?      @relation(fields: [userId], references: [id])
+  emailLogs EmailLog[]
+
+  @@unique([webinarId, email])
+  @@index([email])
+  @@index([accessToken])
+}
+
+// ── Purchases ─────────────────────────────────────────────────────────────────
+
+model Purchase {
+  id                    String   @id @default(cuid())
+  userId                String?
+  email                 String
+  productId             String?
+  webinarId             String?
+  stripeSessionId       String   @unique
+  stripePaymentIntentId String   @default("")
+  amountGbp             Int      // pence
+  // PENDING | COMPLETE | REFUNDED | FAILED
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User?    @relation(fields: [userId], references: [id])
+  product Product? @relation(fields: [productId], references: [id])
+
+  @@index([email])
+  @@index([stripeSessionId])
+}
+
+// ── Watch Events (append-only analytics) ─────────────────────────────────────
+
+model WatchEvent {
+  id             String  @id @default(cuid())
+  webinarId      String
+  registrationId String?
+  userId         String?
+  sessionId      String  // client UUID per watch session
+  // PLAY | PAUSE | SEEK | PROGRESS | COMPLETE | CTA_SEEN | CTA_CLICKED
+  eventType    String
+  positionSecs Float    @default(0)
+  metadata     String   @default("{}") // JSON blob
+  createdAt    DateTime @default(now())
+
+  webinar Webinar @relation(fields: [webinarId], references: [id])
+  user    User?   @relation(fields: [userId], references: [id])
+
+  @@index([webinarId, sessionId])
+  @@index([registrationId])
+}
+
+// ── Email Automation ──────────────────────────────────────────────────────────
+
+model EmailStep {
+  id        String  @id @default(cuid())
+  webinarId String? // null = global default
+  stepNumber Int
+  // REGISTRATION | WATCH_STARTED | WATCH_PERCENT | WATCH_COMPLETE |
+  // ABANDONED | DAYS_AFTER_REG |
+  // LIVE_REMINDER_24H | LIVE_REMINDER_1H | LIVE_STARTED | REPLAY_AVAILABLE
+  triggerType  String
+  triggerValue String   @default("")
+  delayHours   Int      @default(0)
+  subject      String
+  preheader    String   @default("")
+  bodyHtml     String   // {{firstName}}, {{webinarTitle}}, {{accessUrl}}, {{ctaUrl}}
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  webinar Webinar? @relation(fields: [webinarId], references: [id], onDelete: Cascade)
+
+  @@unique([webinarId, stepNumber])
+}
+
+model EmailLog {
+  id              String   @id @default(cuid())
+  registrationId  String?
+  userId          String?
+  email           String
+  stepId          String?
+  emailType       String
+  subject         String
+  status          String   @default("SENT") // SENT | FAILED | BOUNCED
+  resendMessageId String   @default("")
+  createdAt       DateTime @default(now())
+
+  registration Registration? @relation(fields: [registrationId], references: [id])
+  user         User?         @relation(fields: [userId], references: [id])
+
+  @@index([registrationId])
+  @@index([email])
+}
+
+// ── Widgets ───────────────────────────────────────────────────────────────────
+
+model Widget {
+  id        String @id @default(cuid())
+  webinarId String
+  // EXIT_INTENT | FLOATING | INLINE_BANNER
+  widgetType String
+  isActive   Boolean @default(true)
+
+  headline     String @default("Watch the latest webinar!")
+  subheadline  String @default("")
+  ctaLabel     String @default("Watch Now — It's Free")
+  thumbnailUrl String @default("")
+
+  // EXIT_INTENT
+  exitDelayMs   Int @default(0)
+  cooldownHours Int @default(24)
+
+  // FLOATING
+  floatPosition String @default("BOTTOM_RIGHT") // BOTTOM_RIGHT | BOTTOM_LEFT
+  floatOffsetPx Int    @default(24)
+
+  accentColor String  @default("#fbba00")
+  darkMode    Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  webinar Webinar @relation(fields: [webinarId], references: [id], onDelete: Cascade)
+}
+
+// ── AI Watch Q&A ──────────────────────────────────────────────────────────────
+
+model WatchQA {
+  id             String   @id @default(cuid())
+  webinarId      String
+  registrationId String?
+  sessionId      String
+  positionSecs   Float    @default(0)
+  chapterTitle   String   @default("")
+  question       String
+  answer         String   @default("")
+  model          String   @default("claude-sonnet-4-6")
+  createdAt      DateTime @default(now())
+
+  webinar Webinar @relation(fields: [webinarId], references: [id], onDelete: Cascade)
+
+  @@index([webinarId])
+  @@index([registrationId])
+}
+
+// ── Cron deduplication ────────────────────────────────────────────────────────
+
+model CronLog {
+  id     String   @id @default(cuid())
+  key    String   @unique
+  sentAt DateTime @default(now())
+}

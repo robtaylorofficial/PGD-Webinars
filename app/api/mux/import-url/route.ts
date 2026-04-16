@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
 
     // Mux pulls the video directly from the URL — no browser upload needed
     const asset = await mux.video.assets.create({
-      input: [{ url: resolvedUrl }],
+      inputs: [{ url: resolvedUrl }],
       playback_policy: ['signed'],
       passthrough,
     })

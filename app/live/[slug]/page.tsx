@@ -45,15 +45,19 @@ export default async function LivePage({
     })
   }
 
-  // Get a signed live playback token if we're live
-  let signedLiveToken: string | null = null
-  if (webinar.status === 'LIVE' && webinar.muxLivePlaybackId) {
-    try {
-      signedLiveToken = await signMuxPlaybackToken(webinar.muxLivePlaybackId, 7200)
-    } catch {
-      // If signing fails, we'll show an error state
-    }
-  }
+  // Sign tokens for live + waiting room video in parallel
+  const [signedLiveToken, signedWaitingRoomToken] = await Promise.all([
+    webinar.status === 'LIVE' && webinar.muxLivePlaybackId
+      ? signMuxPlaybackToken(webinar.muxLivePlaybackId, 7200).catch(() => null)
+      : Promise.resolve(null),
+    webinar.waitingRoomMuxPlaybackId
+      ? signMuxPlaybackToken(webinar.waitingRoomMuxPlaybackId, 7200).catch(() => null)
+      : Promise.resolve(null),
+  ])
+
+  // Parse objectives
+  let objectives: string[] = []
+  try { objectives = JSON.parse(webinar.waitingRoomObjectives) } catch { objectives = [] }
 
   return (
     <LivePageClient
@@ -64,6 +68,7 @@ export default async function LivePage({
         subtitle: webinar.subtitle,
         thumbnailUrl: webinar.thumbnailUrl,
         status: webinar.status,
+        webinarType: webinar.webinarType,
         muxLivePlaybackId: webinar.muxLivePlaybackId,
         muxPlaybackId: webinar.muxPlaybackId,
       }}
@@ -73,6 +78,14 @@ export default async function LivePage({
         scheduledAt: latestSession.scheduledAt.toISOString(),
         durationMins: latestSession.durationMins,
       } : null}
+      waitingRoom={{
+        signedToken: signedWaitingRoomToken,
+        productUrl: webinar.waitingRoomProductUrl,
+        productTitle: webinar.waitingRoomProductTitle,
+        productImage: webinar.waitingRoomProductImage,
+        instructions: webinar.waitingRoomInstructions,
+        objectives,
+      }}
       signedLiveToken={signedLiveToken}
       registrationToken={registration?.accessToken ?? null}
       registrationEmail={registration?.email ?? null}

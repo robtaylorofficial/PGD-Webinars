@@ -10,6 +10,7 @@ import AdminTabs from '../../../../../components/admin/admin-tabs'
 import LiveSessionsManager from '../../../../../components/admin/live-sessions-manager'
 import WidgetBuilder from '../../../../../components/admin/widget-builder'
 import WebinarAnalytics from '../../../../../components/admin/webinar-analytics'
+import WaitingRoomEditor from '../../../../../components/admin/waiting-room-editor'
 import Link from 'next/link'
 
 export default async function EditWebinarPage({
@@ -129,6 +130,7 @@ export default async function EditWebinarPage({
     { key: 'chapters', label: 'Chapters' },
     { key: 'ctas', label: 'CTAs' },
     { key: 'live', label: 'Live' },
+    { key: 'waiting-room', label: 'Waiting Room' },
     { key: 'widgets', label: 'Widgets' },
     { key: 'analytics', label: 'Analytics' },
   ]
@@ -194,6 +196,20 @@ export default async function EditWebinarPage({
             webinarId={webinar.id}
             ctas={webinar.ctas}
             durationSecs={webinar.muxDurationSecs}
+          />
+        )}
+
+        {tab === 'waiting-room' && (
+          <WaitingRoomEditor
+            webinarId={webinar.id}
+            data={{
+              waitingRoomMuxPlaybackId: webinar.waitingRoomMuxPlaybackId,
+              waitingRoomProductUrl: webinar.waitingRoomProductUrl,
+              waitingRoomProductTitle: webinar.waitingRoomProductTitle,
+              waitingRoomProductImage: webinar.waitingRoomProductImage,
+              waitingRoomInstructions: webinar.waitingRoomInstructions,
+              waitingRoomObjectives: webinar.waitingRoomObjectives,
+            }}
           />
         )}
 

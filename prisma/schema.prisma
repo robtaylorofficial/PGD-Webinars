@@ -102,6 +102,15 @@ model Webinar {
   metaTitle String @default("")
   metaDesc  String @default("")
 
+  // Waiting room (shown 15 mins before scheduled start)
+  waitingRoomMuxAssetId    String @default("")
+  waitingRoomMuxPlaybackId String @default("") // looping holding video
+  waitingRoomProductUrl    String @default("") // Amazon link or any URL
+  waitingRoomProductTitle  String @default("")
+  waitingRoomProductImage  String @default("") // image URL for product promo
+  waitingRoomInstructions  String @default("") @db.Text // how to prepare
+  waitingRoomObjectives    String @default("") @db.Text // JSON array of strings
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

@@ -10,17 +10,20 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { webinarId } = await req.json()
+    const { webinarId, waitingRoom } = await req.json()
     if (!webinarId) {
       return NextResponse.json({ error: 'webinarId required' }, { status: 400 })
     }
 
     const mux = getMux()
+    // passthrough encodes both the webinarId and whether this is a waiting room video
+    const passthrough = waitingRoom ? `waiting_room:${webinarId}` : webinarId
+
     const upload = await mux.video.uploads.create({
       cors_origin: process.env.NEXT_PUBLIC_APP_URL ?? '*',
       new_asset_settings: {
         playback_policy: ['signed'],
-        passthrough: webinarId, // used in webhook to link asset back to webinar
+        passthrough,
       },
     })
 

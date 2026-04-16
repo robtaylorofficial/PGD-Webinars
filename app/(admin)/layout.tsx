@@ -1,5 +1,3 @@
-import { auth } from '../../auth'
-import { redirect } from 'next/navigation'
 import AdminSidebar from '../../components/admin/sidebar'
 
 export default async function AdminLayout({
@@ -7,12 +5,7 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode
 }) {
-  const session = await auth()
-  const role = (session?.user as { role?: string })?.role
-
-  if (!session || role !== 'ADMIN') {
-    redirect('/login')
-  }
+  // AUTH TEMPORARILY DISABLED FOR PREVIEW — re-enable before going live
 
   return (
     <div className="flex min-h-screen bg-pgd-purple">

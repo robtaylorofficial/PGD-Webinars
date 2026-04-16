@@ -23,28 +23,41 @@ export async function POST(req: NextRequest) {
   try {
     if (type === 'video.asset.ready') {
       const asset = data
-      const webinarId = asset.passthrough // set in upload new_asset_settings
+      const passthrough = asset.passthrough as string | undefined
 
-      if (!webinarId) {
-        console.warn('[mux/webhook] asset.ready with no passthrough webinarId', asset.id)
+      if (!passthrough) {
+        console.warn('[mux/webhook] asset.ready with no passthrough', asset.id)
         return NextResponse.json({ received: true })
       }
 
-      // Get the signed playback ID
       const signedPlayback = asset.playback_ids?.find(
         (p: { policy: string }) => p.policy === 'signed',
       )
 
-      await prisma.webinar.update({
-        where: { id: webinarId },
-        data: {
-          muxAssetId: asset.id,
-          muxPlaybackId: signedPlayback?.id ?? '',
-          muxDurationSecs: Math.round(asset.duration ?? 0),
-        },
-      })
-
-      console.log(`[mux/webhook] webinar ${webinarId} video ready: asset ${asset.id}`)
+      if (passthrough.startsWith('waiting_room:')) {
+        // Waiting room holding video
+        const webinarId = passthrough.replace('waiting_room:', '')
+        await prisma.webinar.update({
+          where: { id: webinarId },
+          data: {
+            waitingRoomMuxAssetId: asset.id,
+            waitingRoomMuxPlaybackId: signedPlayback?.id ?? '',
+          },
+        })
+        console.log(`[mux/webhook] webinar ${webinarId} waiting room video ready`)
+      } else {
+        // Main webinar VOD
+        const webinarId = passthrough
+        await prisma.webinar.update({
+          where: { id: webinarId },
+          data: {
+            muxAssetId: asset.id,
+            muxPlaybackId: signedPlayback?.id ?? '',
+            muxDurationSecs: Math.round(asset.duration ?? 0),
+          },
+        })
+        console.log(`[mux/webhook] webinar ${webinarId} video ready: asset ${asset.id}`)
+      }
     }
 
     if (type === 'video.asset.errored') {

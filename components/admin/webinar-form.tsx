@@ -173,27 +173,11 @@ export default function WebinarForm({ webinar }: Props) {
         <Field label="Access type">
           <select name="accessType" value={form.accessType} onChange={handleChange} className={input()}>
             <option value="FREE">Free</option>
-            <option value="PAID">Paid</option>
-            <option value="MEMBERSHIP">Membership only</option>
+            <option value="PAID" disabled>Paid (coming soon)</option>
+            <option value="MEMBERSHIP" disabled>Membership only (coming soon)</option>
           </select>
+          <p className="text-white/30 text-xs mt-1">Paid access via Stripe — available in a future update.</p>
         </Field>
-
-        {form.accessType === 'PAID' && (
-          <Field label="Price (£)" hint="Enter in pounds e.g. 97">
-            <input
-              name="priceGbp"
-              type="number"
-              min="0"
-              step="0.01"
-              value={form.priceGbp / 100 || ''}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, priceGbp: Math.round(parseFloat(e.target.value || '0') * 100) }))
-              }
-              placeholder="97.00"
-              className={input()}
-            />
-          </Field>
-        )}
       </div>
 
       <div className="border-t border-white/10 pt-6">

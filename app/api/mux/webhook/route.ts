@@ -45,6 +45,17 @@ export async function POST(req: NextRequest) {
           },
         })
         console.log(`[mux/webhook] webinar ${webinarId} waiting room video ready`)
+      } else if (passthrough.startsWith('thank_you:')) {
+        // Thank you personal video
+        const webinarId = passthrough.replace('thank_you:', '')
+        await prisma.webinar.update({
+          where: { id: webinarId },
+          data: {
+            thankYouVideoMuxAssetId: asset.id,
+            thankYouVideoMuxPlaybackId: signedPlayback?.id ?? '',
+          },
+        })
+        console.log(`[mux/webhook] webinar ${webinarId} thank you video ready`)
       } else {
         // Main webinar VOD
         const webinarId = passthrough

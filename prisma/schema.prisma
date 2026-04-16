@@ -102,6 +102,18 @@ model Webinar {
   metaTitle String @default("")
   metaDesc  String @default("")
 
+  // Thank you / end page (shown after video completes)
+  thankYouHeadline          String @default("") // e.g. "Well done — you've just done what most don't."
+  thankYouMessage           String @default("") @db.Text
+  thankYouVideoMuxAssetId   String @default("")
+  thankYouVideoMuxPlaybackId String @default("") // optional short personal video message
+  thankYouPrimaryCtaLabel   String @default("")  // e.g. "Book a free call"
+  thankYouPrimaryCtaUrl     String @default("")
+  thankYouSecondaryCtaLabel String @default("")  // e.g. "Watch another webinar"
+  thankYouSecondaryCtaUrl   String @default("")
+  thankYouShowRating        Boolean @default(true)
+  thankYouShowShare         Boolean @default(true)
+
   // Waiting room (shown 15 mins before scheduled start)
   waitingRoomMuxAssetId    String @default("")
   waitingRoomMuxPlaybackId String @default("") // looping holding video

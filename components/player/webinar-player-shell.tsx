@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import MuxPlayer from '@mux/mux-player-react'
 import { usePlayerStore } from '../../lib/player-store'
 import ProgressTracker from './progress-tracker'
@@ -36,10 +37,13 @@ interface Props {
   playbackToken: string
   registrationId: string
   webinarId: string
+  webinarSlug: string
+  registrationToken: string
   chapters: Chapter[]
   ctas: CtaData[]
   resumeAt: number
   isEmbed?: boolean
+  hasThankYouPage?: boolean
 }
 
 // Client-side session ID — stable per page load
@@ -52,11 +56,15 @@ export default function WebinarPlayerShell({
   playbackToken,
   registrationId,
   webinarId,
+  webinarSlug,
+  registrationToken,
   chapters,
   ctas,
   resumeAt,
   isEmbed = false,
+  hasThankYouPage = false,
 }: Props) {
+  const router = useRouter()
   const playerRef = useRef<HTMLVideoElement & { currentTime: number } | null>(null)
   const [sessionId] = useState(makeSessionId)
   const [showResume, setShowResume] = useState(resumeAt >= 30)
@@ -107,7 +115,7 @@ export default function WebinarPlayerShell({
           onPause={() => setPlaying(false)}
           onEnded={() => {
             setPlaying(false)
-            // Fire COMPLETE event
+            // Fire COMPLETE event, then redirect to thank you page
             fetch('/api/watch/events', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -116,6 +124,10 @@ export default function WebinarPlayerShell({
                 eventType: 'COMPLETE',
                 positionSecs: playerRef.current?.currentTime ?? 0,
               }]),
+            }).finally(() => {
+              if (hasThankYouPage && !isEmbed) {
+                router.push(`/thank-you/${webinarSlug}?token=${registrationToken}`)
+              }
             })
           }}
         />

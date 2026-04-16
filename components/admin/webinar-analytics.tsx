@@ -12,6 +12,8 @@ interface AnalyticsData {
   avgWatchPct: number
   ctaClicks: number
   qaQuestions: number
+  avgRating: number | null
+  ratingCount: number
   chartData: Array<{ date: string; registrations: number }>
   topQAs: Array<{ question: string; count: number }>
 }
@@ -78,6 +80,14 @@ export default function WebinarAnalytics({ data }: Props) {
           label="Q&A questions asked"
           value={data.qaQuestions.toLocaleString()}
         />
+        {data.avgRating !== null && (
+          <Metric
+            label="Avg star rating"
+            value={`${data.avgRating.toFixed(1)} ★`}
+            sub={`from ${data.ratingCount} rating${data.ratingCount !== 1 ? 's' : ''}`}
+            color="text-pgd-yellow"
+          />
+        )}
       </div>
 
       {/* Registrations over time */}

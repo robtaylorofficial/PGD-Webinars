@@ -109,9 +109,12 @@ export default async function WatchPage({ params, searchParams }: Props) {
             playbackToken={playbackToken}
             registrationId={registration.id}
             webinarId={webinar.id}
+            webinarSlug={slug}
+            registrationToken={token}
             chapters={webinar.chapters}
             ctas={webinar.ctas}
             resumeAt={resumeAt}
+            hasThankYouPage={!!(webinar.thankYouHeadline || webinar.thankYouMessage || webinar.thankYouPrimaryCtaLabel)}
           />
         ) : (
           <div className="aspect-video bg-pgd-purple-light rounded-2xl flex items-center justify-center">

@@ -11,6 +11,7 @@ import LiveSessionsManager from '../../../../../components/admin/live-sessions-m
 import WidgetBuilder from '../../../../../components/admin/widget-builder'
 import WebinarAnalytics from '../../../../../components/admin/webinar-analytics'
 import WaitingRoomEditor from '../../../../../components/admin/waiting-room-editor'
+import ThankYouEditor from '../../../../../components/admin/thank-you-editor'
 import Link from 'next/link'
 
 export default async function EditWebinarPage({
@@ -52,6 +53,7 @@ export default async function EditWebinarPage({
         qaQuestions,
         recentRegs,
         topQAs,
+        ratingEvents,
       ] = await Promise.all([
         prisma.registration.count({ where: { webinarId: id } }),
         prisma.watchEvent.findMany({
@@ -86,6 +88,10 @@ export default async function EditWebinarPage({
           orderBy: { _count: { question: 'desc' } },
           take: 10,
         }),
+        prisma.watchEvent.findMany({
+          where: { webinarId: id, eventType: 'RATING' },
+          select: { metadata: true },
+        }),
       ])
 
       // Build chart data
@@ -105,6 +111,14 @@ export default async function EditWebinarPage({
         ? Math.round((avgSecs / webinar.muxDurationSecs) * 100)
         : 0
 
+      // Parse star ratings from metadata JSON
+      const ratings = ratingEvents
+        .map((e) => { try { return JSON.parse(e.metadata).rating as number } catch { return null } })
+        .filter((r): r is number => typeof r === 'number' && r >= 1 && r <= 5)
+      const avgRating = ratings.length > 0
+        ? ratings.reduce((a, b) => a + b, 0) / ratings.length
+        : null
+
       analyticsData = {
         totalRegistrations,
         uniqueViewed: uniqueViewedRows.length,
@@ -116,6 +130,8 @@ export default async function EditWebinarPage({
         avgWatchPct: avgPct,
         ctaClicks,
         qaQuestions,
+        avgRating,
+        ratingCount: ratings.length,
         chartData: Array.from(dayMap.entries()).map(([date, registrations]) => ({ date, registrations })),
         topQAs: topQAs.map((q) => ({ question: q.question, count: q._count.question })),
       }
@@ -131,6 +147,7 @@ export default async function EditWebinarPage({
     { key: 'ctas', label: 'CTAs' },
     { key: 'live', label: 'Live' },
     { key: 'waiting-room', label: 'Waiting Room' },
+    { key: 'thank-you', label: 'Thank You' },
     { key: 'widgets', label: 'Widgets' },
     { key: 'analytics', label: 'Analytics' },
   ]
@@ -210,6 +227,25 @@ export default async function EditWebinarPage({
               waitingRoomInstructions: webinar.waitingRoomInstructions,
               waitingRoomObjectives: webinar.waitingRoomObjectives,
             }}
+          />
+        )}
+
+        {tab === 'thank-you' && (
+          <ThankYouEditor
+            webinarId={webinar.id}
+            webinarSlug={webinar.slug}
+            data={{
+              thankYouHeadline: webinar.thankYouHeadline,
+              thankYouMessage: webinar.thankYouMessage,
+              thankYouVideoMuxPlaybackId: webinar.thankYouVideoMuxPlaybackId,
+              thankYouPrimaryCtaLabel: webinar.thankYouPrimaryCtaLabel,
+              thankYouPrimaryCtaUrl: webinar.thankYouPrimaryCtaUrl,
+              thankYouSecondaryCtaLabel: webinar.thankYouSecondaryCtaLabel,
+              thankYouSecondaryCtaUrl: webinar.thankYouSecondaryCtaUrl,
+              thankYouShowRating: webinar.thankYouShowRating,
+              thankYouShowShare: webinar.thankYouShowShare,
+            }}
+            appUrl={appUrl}
           />
         )}
 

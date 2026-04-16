@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
       data: {
         webinarId,
         registrationId: registration?.id ?? null,
+        sessionId: registration?.id ?? 'anon',
         eventType: 'RATING',
         positionSecs: 0,
         metadata: JSON.stringify({ rating }),
